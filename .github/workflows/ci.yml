@@ -26,10 +26,10 @@ jobs:
         with:
           path: dist
 
-  # GitHub Pages needs a public repository on the free plan, so this job only runs once the repo is public.
+  # Publishing is manual: run this workflow by hand (Actions tab -> CI -> Run workflow) after the repo is public.
   deploy:
     needs: test-and-build
-    if: github.ref == 'refs/heads/main' && github.event.repository.private == false
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       pages: write
