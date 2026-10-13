@@ -1,4 +1,4 @@
-# cpsl-product-task
+# miniature-parakeet-pt
 
 A small proof-of-concept prototype built for a product task.
 
