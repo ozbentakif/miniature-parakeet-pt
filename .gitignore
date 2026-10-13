@@ -1,0 +1,25 @@
+# Keep provided task materials out of the repo
+*.csv
+*.pdf
+*.xlsx
+!public/sample.csv
+
+# Local prep notes
+_prep/
+
+# Build output and dependencies
+node_modules
+dist
+dist-ssr
+*.local
+*.log
+
+# Editor and OS files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+__pycache__/
+
+# Local tool settings
+.claude/
