@@ -1,57 +1,97 @@
-import { useState } from 'react'
-import { parseCsv, type CsvTable } from './core/csv'
+import { useEffect, useState } from 'react'
+import { addDays, formatDay, formatDayLong, weekday } from './core/dates'
+import { lastCompleteDay } from './core/metrics'
+import Dashboard from './ui/Dashboard'
+import Inbox from './ui/Inbox'
+import { useWds } from './ui/useWds'
 
-const PREVIEW_ROWS = 10
+const TABS = [
+  { id: 'dashboard', label: 'Dashboard', enabled: true },
+  { id: 'inbox', label: 'Inbox', enabled: true },
+  // Shown so the full product is visible, but not built in this prototype.
+  { id: 'rules', label: 'Rules', enabled: false },
+  { id: 'log', label: 'Audit log', enabled: false },
+] as const
+type TabId = (typeof TABS)[number]['id']
+
+function tabFromHash(): TabId {
+  const id = window.location.hash.slice(1)
+  return TABS.some((t) => t.enabled && t.id === id) ? (id as TabId) : 'dashboard'
+}
 
 export default function App() {
-  const [table, setTable] = useState<CsvTable | null>(null)
-  const [fileName, setFileName] = useState('')
-  const [dragging, setDragging] = useState(false)
+  const wds = useWds()
+  const [tab, setTab] = useState<TabId>(tabFromHash)
+  useEffect(() => {
+    const onHash = () => setTab(tabFromHash())
+    window.addEventListener('hashchange', onHash)
+    return () => window.removeEventListener('hashchange', onHash)
+  }, [])
 
-  async function load(file: File | undefined) {
-    if (!file) return
-    setFileName(file.name)
-    setTable(parseCsv(await file.text()))
-  }
+  const { dataset, sim } = wds
+  const openItems = sim.queue.filter((q) => q.status === 'open').length
+  const platformTo = dataset ? (addDays(sim.clock, -1) <= dataset.lastDate ? addDays(sim.clock, -1) : dataset.lastDate) : null
 
   return (
-    <main className="app">
-      <header>
-        <h1>Product Prototype</h1>
-        <p className="muted">Load a CSV file to start. The file is read in your browser and never uploaded.</p>
+    <div className="app">
+      <header className="top">
+        <div className="brand">
+          <span className="logo" aria-hidden="true">W</span>
+          <div>
+            <h1>WDS</h1>
+            <p className="muted small">Wise Digital-Marketing Spending · prototype</p>
+          </div>
+        </div>
+        {dataset && sim.clock && (
+          <dl className="status">
+            <div>
+              <dt>{sim.mode === 'replay' ? 'Replay day' : 'Today'}</dt>
+              <dd>{weekday(sim.clock)} {formatDayLong(sim.clock)}</dd>
+            </div>
+            <div>
+              <dt>Last sync</dt>
+              <dd>01:00 · hourly</dd>
+            </div>
+            <div>
+              <dt>Platform data</dt>
+              <dd>to {platformTo && formatDay(platformTo)}</dd>
+            </div>
+            <div>
+              <dt>Qualification</dt>
+              <dd>complete to {formatDay(lastCompleteDay(sim.clock))} <span className="pill tone-good">on time</span></dd>
+            </div>
+          </dl>
+        )}
       </header>
 
-      <label
-        className={`dropzone${dragging ? ' dragging' : ''}`}
-        onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
-        onDragLeave={() => setDragging(false)}
-        onDrop={(e) => { e.preventDefault(); setDragging(false); load(e.dataTransfer.files[0]) }}
-      >
-        <input type="file" accept=".csv,text/csv" onChange={(e) => load(e.target.files?.[0])} hidden />
-        <strong>Drop a CSV file here</strong>
-        <span className="muted">or click to choose one</span>
-      </label>
+      <p className="notice small">
+        Simulated: data comes from a CSV, and pauses, alerts and approvals are not sent anywhere. {dataset?.fileName === 'sample.csv' ? 'You are looking at synthetic sample data. Drop your own extract into the Inbox to use it.' : ''}
+      </p>
 
-      {table && (
-        <section>
-          <p>
-            <strong>{fileName}</strong>: {table.rows.length.toLocaleString()} rows, {table.headers.length} columns
-          </p>
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>{table.headers.map((h) => <th key={h}>{h}</th>)}</tr>
-              </thead>
-              <tbody>
-                {table.rows.slice(0, PREVIEW_ROWS).map((row, i) => (
-                  <tr key={i}>{table.headers.map((h) => <td key={h}>{row[h]}</td>)}</tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {table.rows.length > PREVIEW_ROWS && <p className="muted">Showing the first {PREVIEW_ROWS} rows.</p>}
-        </section>
-      )}
-    </main>
+      <nav className="tabs" aria-label="Sections">
+        {TABS.map((t) =>
+          t.enabled ? (
+            <a key={t.id} href={`#${t.id}`} className={tab === t.id ? 'on' : ''} aria-current={tab === t.id ? 'page' : undefined}>
+              {t.label}
+              {t.id === 'dashboard' && openItems > 0 && <span className="count">{openItems}</span>}
+            </a>
+          ) : (
+            <span key={t.id} className="disabled" aria-disabled="true" title="Not part of this prototype">
+              {t.label}
+            </span>
+          ),
+        )}
+      </nav>
+
+      <main>
+        {tab === 'inbox' && <Inbox wds={wds} />}
+        {tab !== 'inbox' && !dataset && (
+          <section className="panel">
+            <p className="muted empty">Loading the sample data… If nothing appears, add a CSV in the <a href="#inbox">Inbox</a>.</p>
+          </section>
+        )}
+        {tab === 'dashboard' && dataset && <Dashboard wds={wds} dataset={dataset} />}
+      </main>
+    </div>
   )
 }
