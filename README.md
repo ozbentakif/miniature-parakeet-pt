@@ -2,7 +2,7 @@
 
 A working prototype of WDS, a rule-based tool that checks paid-ad campaigns on Meta, Google and TikTok every hour, pauses or flags the ones losing money, and records every decision with its reason.
 
-**Live app:** _link added after deployment_
+**Live app:** https://ozbentakif.github.io/miniature-parakeet-pt/
 
 ## What to look at
 1. **Dashboard.** It opens on "today" (1 Aug 2026) with WDS just switched on. The two starter rules have already checked every campaign. "Needs your attention" lists the stop-loss approval requests. Approve or decline one. Declining asks for a one-click reason.
